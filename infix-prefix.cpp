@@ -1,4 +1,5 @@
 #include <iostream>
+#include <stack>
 
 using namespace std;
 
@@ -27,49 +28,35 @@ bool isOperand(char ch) {
 
 string infixToPrefix(const string &infix) {
     string prefix;
-    string reversedInfix = string(infix.rbegin(), infix.rend());
+    stack<char> operators;
 
-    for (char ch : reversedInfix) {
+    for (char ch : infix) {
         if (isOperand(ch)) {
-            prefix = ch + prefix;
-        } else if (ch == ')') {
-            int count = 1;
-            while (count > 0) {
-                char currentChar = reversedInfix[0];
-                reversedInfix = reversedInfix.substr(1);
-                if (currentChar == ')') {
-                    count++;
-                } else if (currentChar == '(') {
-                    count--;
-                }
-                if (count > 0) {
-                    prefix = currentChar + prefix;
-                }
-            }
+            prefix += ch;
         } else if (ch == '(') {
-            int count = 1;
-            while (count > 0) {
-                char currentChar = reversedInfix[0];
-                reversedInfix = reversedInfix.substr(1);
-                if (currentChar == '(') {
-                    count++;
-                } else if (currentChar == ')') {
-                    count--;
-                }
-                if (count > 0) {
-                    prefix = currentChar + prefix;
-                }
+            operators.push(ch);
+        } else if (ch == ')') {
+            while (!operators.empty() && operators.top() != '(') {
+                prefix += operators.top();
+                operators.pop();
             }
+            operators.pop(); // Discard the '('
         } else if (isOperator(ch)) {
-            while (!reversedInfix.empty() && getPrecedence(reversedInfix[0]) > getPrecedence(ch)) {
-                prefix = reversedInfix[0] + prefix;
-                reversedInfix = reversedInfix.substr(1);
+            while (!operators.empty() && getPrecedence(operators.top()) > getPrecedence(ch)) {
+                prefix += operators.top();
+                operators.pop();
             }
-            prefix = ch + prefix;
+            operators.push(ch);
         }
     }
 
-    return prefix;
+    while (!operators.empty()) {
+        prefix += operators.top();
+        operators.pop();
+    }
+
+    // Reverse the prefix expression
+    return string(prefix.rbegin(), prefix.rend());
 }
 
 int main() {

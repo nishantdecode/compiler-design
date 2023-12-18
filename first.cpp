@@ -1,69 +1,89 @@
 #include <iostream>
+#include <algorithm>
 #include <vector>
 
 using namespace std;
 
-const int MAX_NON_TERMINALS = 26;
-
-vector<vector<string>> productions;
-vector<vector<bool>> firstSets(MAX_NON_TERMINALS, vector<bool>(26, false));
-
-void calculateFirst(char nonTerminal) {
-    size_t nonTerminalIndex = nonTerminal - 'A';
-
-    if (firstSets[nonTerminalIndex][nonTerminal - 'A']) {
-        // If FIRST set for this non-terminal is already calculated, return
-        return;
+void calculateFirstSet(int x, int y, int N, vector<char> &first, vector<vector<char> > &firstMatrix, const vector<string> &productions) {
+    if (y < N && productions[x][y] != '|' && !(productions[x][y] >= 'A' && productions[x][y] <= 'Z')) {
+        first.push_back(productions[x][y]);
     }
 
-    for (const string& production : productions[nonTerminalIndex]) {
-        char firstSymbol = production[0];
-
-        if (isupper(firstSymbol)) {
-            // If the first symbol is a non-terminal, calculate FIRST for that non-terminal
-            calculateFirst(firstSymbol);
-
-            // Add FIRST(non-terminal) to FIRST(current non-terminal)
-            for (int i = 0; i < 26; ++i) {
-                if (firstSets[firstSymbol - 'A'][i]) {
-                    firstSets[nonTerminalIndex][i] = true;
+    if (y < N && (productions[x][y] >= 'A' && productions[x][y] <= 'Z')) {
+        int n = firstMatrix.size();
+        for (int i = 0; i < n; i++) {
+            if (firstMatrix[i][0] == productions[x][y]) {
+                int m = firstMatrix[i].size();
+                for (int j = 1; j < m; j++) {
+                    if (firstMatrix[i][j] == '^') {
+                        if (y < N - 1 && productions[x][y + 1] != '|') {
+                            calculateFirstSet(x, y + 1, N, first, firstMatrix, productions);
+                        } else {
+                            first.push_back('^');
+                        }
+                    } else {
+                        first.push_back(firstMatrix[i][j]);
+                    }
                 }
             }
-
-            // If epsilon is in FIRST(non-terminal), consider the next symbol
-            if (firstSets[firstSymbol - 'A']['$' - 'A']) {
-                size_t i = 1;
-                while (i < production.size() && firstSets[firstSymbol - 'A'][production[i] - 'A']) {
-                    firstSets[nonTerminalIndex][production[i] - 'A'] = true;
-                    ++i;
-                }
-            }
-        } else {
-            // If the first symbol is a terminal, add it to FIRST(current non-terminal)
-            firstSets[nonTerminalIndex][firstSymbol - 'A'] = true;
         }
     }
 }
 
-int main() {
-    // Initialize the grammar productions
-    productions = {{"Ba", "Cd", "ef"}, {"gh", "i"}};
-
-    // Calculate FIRST for each non-terminal
-    calculateFirst('A');
-    calculateFirst('B');
-    calculateFirst('C');
-
-    // Display the calculated FIRST sets
-    for (char nonTerminal = 'A'; nonTerminal <= 'C'; ++nonTerminal) {
-        cout << "FIRST(" << nonTerminal << "): { ";
-        for (char terminal = 'A'; terminal <= 'Z'; ++terminal) {
-            if (firstSets[nonTerminal - 'A'][terminal - 'A']) {
-                cout << terminal << ' ';
+void removeDuplicates(int n, vector<vector<char> > &firstMatrix) {
+    for (int i = 0; i < n; i++) {
+        sort(firstMatrix[i].begin() + 1, firstMatrix[i].end());
+        cout << "\nFirst(" << firstMatrix[i][0] << ") = {";
+        int m = firstMatrix[i].size();
+        for (int j = 1; j < m; j++) {
+            if (firstMatrix[i][j] != firstMatrix[i][j - 1]) {
+                cout << firstMatrix[i][j] << ",";
             }
         }
-        cout << "}\n";
+        if (m > 1) {
+            cout << "\b}";
+        } else {
+            cout << "}";
+        }
     }
+    return;
+}
+
+int main() {
+    vector<string> productions;
+    string s;
+
+    cout << "Enter the grammar (use ^ as null character)\nType 'end' to stop entering productions\n\n";
+
+    while (true) {
+        cin >> s;
+        if (s == "end") {
+            break;
+        }
+        if (s[0] < 'A' || s[0] > 'Z' || s[1] != '-' || s[2] != '>') {
+            cout << "Invalid grammar";
+            break;
+        }
+        productions.push_back(s);
+    }
+
+    int n = productions.size();
+    vector<vector<char> > firstMatrix;
+    vector<char> first;
+
+    for (int i = n - 1; i > -1; i--) {
+        first.push_back(productions[i][0]);
+        int m = productions[i].size();
+        for (int j = 1; j < m; j++) {
+            if (productions[i][j] == '>' || productions[i][j] == '|') {
+                calculateFirstSet(i, j + 1, m, first, firstMatrix, productions);
+            }
+        }
+        firstMatrix.push_back(first);
+        first.clear();
+    }
+
+    removeDuplicates(n, firstMatrix);
 
     return 0;
 }
